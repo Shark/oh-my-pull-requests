@@ -18,7 +18,17 @@ config_path = File.join(File.expand_path(File.dirname(__FILE__)), 'config', 'con
 config = YAML.load_file(config_path)
 logger = Utils.make_logger
 
-octokit_client = Octokit::Client.new(access_token: config['github']['access_token'])
+octokit_config = { access_token: config['github']['access_token'] }
+if api_endpoint = config['github']['api_endpoint']
+  logger.info("Custom API Endpoint: #{api_endpoint}")
+  octokit_config[:api_endpoint] = api_endpoint
+end
+
+octokit_client = Octokit::Client.new(octokit_config)
+if config['github']['ssl_verify'] == false
+  logger.warning('Disabling SSL Certificate Verification')
+  octokit_client.connection_options[:ssl] = { verify: false }
+end
 user = octokit_client.user
 logger.info "Logged in as #{user.login}"
 

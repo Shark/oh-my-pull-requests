@@ -2,3 +2,6 @@ github:
   access_token: github_personal_access_token
   refresh_interval: 30
   update_repository_interval: 60
+  # optional
+  api_endpoint: http://my.git.hub/api/v3
+  ssl_verify: false
