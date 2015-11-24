@@ -18,7 +18,10 @@ config_path = File.join(File.expand_path(File.dirname(__FILE__)), 'config', 'con
 config = YAML.load_file(config_path)
 logger = Utils.make_logger
 
-octokit_config = { access_token: config['github']['access_token'] }
+octokit_config = {
+  access_token: config['github']['access_token'],
+  auto_paginate: true
+}
 if api_endpoint = config['github']['api_endpoint']
   logger.info("Custom API Endpoint: #{api_endpoint}")
   octokit_config[:api_endpoint] = api_endpoint
@@ -47,6 +50,7 @@ loop do
   end
 
   repository.update_pull_requests!
+  repository.update_states!
   repository.pull_requests.each(&:forget_changed!)
 
   color = ColorReducer.color(repository)

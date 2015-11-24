@@ -18,7 +18,7 @@ class PullRequest
 
   def head_sha=(head_sha)
     @head_sha_changed = head_sha != @head_sha
-    logger.debug("New head_sha #{head_sha} for pull request #{canonical_name}") if @head_sha_changed
+    logger.info("New head_sha #{head_sha[0..6]}") if @head_sha_changed
     @head_sha = head_sha
   end
 
@@ -46,7 +46,7 @@ class PullRequest
     else
       @state = :unknown
     end
-    logger.debug("Pull request #{canonical_name} state #{@state}") if @state != old_state
+    logger.info("State #{@state}") if @state != old_state
   end
 
   def forget_changed!
@@ -56,6 +56,6 @@ class PullRequest
   private
 
   def logger
-    @logger ||= Utils.make_logger
+    @logger ||= Utils.make_logger("Pull Request #{canonical_name}")
   end
 end
