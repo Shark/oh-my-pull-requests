@@ -38,6 +38,12 @@ logger.info "Logged in as #{user.login}"
 repository = PullRequestRepository.new(octokit_client)
 last_update_repository = nil
 old_color = nil
+Blink1Adapter.fade_to_color(:off, config['blink1']['luminosity'])
+
+trap('INT') do
+  Blink1Adapter.fade_to_color(:off, config['blink1']['luminosity'])
+  exit
+end
 
 loop do
   ratelimit = octokit_client.ratelimit
@@ -56,7 +62,7 @@ loop do
   color = ColorReducer.color(repository)
   if color != old_color
     logger.info("Setting color #{color}")
-    Blink1Adapter.fade_to_color(color)
+    Blink1Adapter.fade_to_color(color, config['blink1']['luminosity'])
     old_color = color
   end
 
