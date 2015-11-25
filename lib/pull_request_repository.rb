@@ -1,4 +1,5 @@
 require_relative 'pull_request'
+require_relative 'event_scraper'
 require_relative 'utils'
 
 class PullRequestRepository
@@ -7,40 +8,37 @@ class PullRequestRepository
   def initialize(octokit_client)
     @octokit_client = octokit_client
     @pull_requests = []
+    @event_scraper = EventScraper.new(octokit_client)
   end
 
   def update_repository!
     logger.debug('update_repository!')
-    user = octokit_client.user
-    api_prs = octokit_client
-                    .user_events(user.login, per_page: 100)
-                    .select {|event| event.type == 'PullRequestEvent' && event.actor.login == user.login }
-                    .map {|event| event.payload.pull_request }
-                    .select {|pr| pr.state == 'open' }
-                    .compact
 
-    canonical_names = []
-    api_prs.each do |pr|
-      pull_request = add_pull_request(owner: pr.head.repo.owner.login,
-                                      repository: pr.head.repo.name,
-                                      id: pr.number,
-                                      head_sha: pr.head.sha)
-      canonical_names << pull_request.canonical_name
-    end
-    prune! canonical_names
+    pull_requests = event_scraper
+                    .run
+                    .select {|e| e.type == 'PullRequestEvent' && e.actor.login == user.login }
+                    .map{|e| e.payload.pull_request }
+                    .select{|pr| pr.state == 'open' }
+                    .compact
+                    .each do |pr|
+                      add_pull_request(owner: pr.head.repo.owner.login,
+                                       repository: pr.head.repo.name,
+                                       id: pr.number,
+                                       head_sha: pr.head.sha)
+                    end
 
     true
   end
 
   def update_pull_requests!
     logger.debug('update_pull_requests!')
-    prs_to_be_excluded = []
+    open_pull_requests = []
     pull_requests.each do |pr|
       api_pr = octokit_client.pull_request("#{pr.owner}/#{pr.repository}", pr.id)
       pr.head_sha = api_pr.head.sha
-      prs_to_be_excluded << pr if api_pr.state == 'open'
+      open_pull_requests << pr if api_pr.state == 'open'
     end
-    prune! prs_to_be_excluded.map(&:canonical_name)
+    prune! open_pull_requests.map(&:canonical_name)
   end
 
   def update_states!
@@ -60,24 +58,25 @@ class PullRequestRepository
 
   private
 
-  def prune!(canonical_names)
+  def prune!(canonical_names_to_keep)
     @pull_requests = pull_requests
-                      .select do |pr|
-                        if canonical_names.include?(pr.canonical_name)
+                      .reject do |pr|
+                        if !canonical_names_to_keep.include?(pr.canonical_name)
+                          logger.debug "Pruning #{pr.canonical_name}"
                           true
                         else
-                          logger.debug "Pruning #{pr.canonical_name}"
                           false
                         end
                       end
   end
 
   def add_pull_request(options)
-    new_pull_request = PullRequest.new(options)
-    unless get(new_pull_request)
-      logger.debug("Found new pull request: #{new_pull_request.canonical_name} at #{new_pull_request.head_sha[0..6]}")
-      pull_request = new_pull_request
-      pull_requests << new_pull_request
+    pull_request = PullRequest.new(options)
+    if existing_pull_request = get(pull_request)
+      pull_request = existing_pull_request
+    else
+      logger.debug("Found new pull request: #{pull_request.canonical_name} at #{pull_request.head_sha[0..6]}")
+      pull_requests << pull_request
     end
 
     pull_request
@@ -87,5 +86,9 @@ class PullRequestRepository
     @logger ||= Utils.make_logger('PullRequestRepository')
   end
 
-  attr_reader :octokit_client
+  def user
+    @user ||= octokit_client.user
+  end
+
+  attr_reader :octokit_client, :event_scraper
 end

@@ -19,8 +19,7 @@ config = YAML.load_file(config_path)
 logger = Utils.make_logger
 
 octokit_config = {
-  access_token: config['github']['access_token'],
-  auto_paginate: true
+  access_token: config['github']['access_token']
 }
 if api_endpoint = config['github']['api_endpoint']
   logger.info("Custom API Endpoint: #{api_endpoint}")
