@@ -1,7 +1,7 @@
 require_relative 'utils'
 
 class PullRequest
-  attr_reader :owner, :repository, :id, :head_sha, :state
+  attr_reader :owner, :repository, :id, :head_sha, :state, :without_ci
 
   def initialize(options = {})
     @owner = options.fetch(:owner)
@@ -10,6 +10,7 @@ class PullRequest
     @head_sha = options.fetch(:head_sha)
     @head_sha_changed = false
     @state = options.fetch(:state) { :unknown }
+    @without_ci = options.fetch(:without_ci) { false }
   end
 
   def canonical_name
@@ -23,16 +24,19 @@ class PullRequest
   end
 
   def pending?
-    @head_sha_changed ||
-      [:unknown, :pending].include?(state)
+    !without_ci &&
+      (@head_sha_changed ||
+      [:unknown, :pending].include?(state))
   end
 
   def failed?
-    [:failure, :error].include?(state)
+    !without_ci &&
+      [:failure, :error].include?(state)
   end
 
   def succeeded?
-    state == :success
+    without_ci ||
+      state == :success
   end
 
   def states

@@ -6,5 +6,7 @@ github:
   # optional
   api_endpoint: http://my.git.hub/api/v3
   ssl_verify: false
+  repositories_without_ci:
+    - user/some_repo
 blink1:
   luminosity: 0.6

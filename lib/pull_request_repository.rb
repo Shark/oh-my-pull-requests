@@ -3,12 +3,13 @@ require_relative 'event_scraper'
 require_relative 'utils'
 
 class PullRequestRepository
-  attr_reader :pull_requests
+  attr_reader :pull_requests, :repositories_without_ci
 
-  def initialize(octokit_client)
+  def initialize(octokit_client, repositories_without_ci)
     @octokit_client = octokit_client
     @pull_requests = []
     @event_scraper = EventScraper.new(octokit_client)
+    @repositories_without_ci = repositories_without_ci
   end
 
   def update_repository!
@@ -21,10 +22,12 @@ class PullRequestRepository
                     .select{|pr| pr.state == 'open' }
                     .compact
                     .each do |pr|
+                      without_ci = repositories_without_ci.include?("#{pr.head.repo.owner.login}/#{pr.head.repo.name}")
                       add_pull_request(owner: pr.head.repo.owner.login,
                                        repository: pr.head.repo.name,
                                        id: pr.number,
-                                       head_sha: pr.head.sha)
+                                       head_sha: pr.head.sha,
+                                       without_ci: without_ci)
                     end
 
     true

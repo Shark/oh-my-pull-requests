@@ -49,7 +49,7 @@ end
 user = octokit_client.user
 logger.info "Logged in as #{user.login}"
 
-repository = PullRequestRepository.new(octokit_client)
+repository = PullRequestRepository.new(octokit_client, config['github']['repositories_without_ci'] || [])
 last_update_repository = nil
 old_color = nil
 Blink1Adapter.fade_to_color(:off, config['blink1']['luminosity'])
