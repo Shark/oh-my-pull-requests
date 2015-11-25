@@ -1,11 +1,13 @@
 #!/usr/bin/env ruby
 require 'yaml'
 require 'time'
+require 'fileutils'
 require 'rubygems'
 require 'bundler/setup'
 
 require 'octokit'
 require 'faraday-http-cache'
+require 'active_support/cache'
 require 'pry' if %w(development test).include?(ENV['RUBY_ENV'])
 
 require_relative 'lib/utils'
@@ -27,9 +29,16 @@ if api_endpoint = config['github']['api_endpoint']
   octokit_config[:api_endpoint] = api_endpoint
 end
 
+cache_dir = Pathname.new(config['github']['cache_dir'])
+cache_dir = File.join(File.expand_path(File.dirname(__FILE__)), cache_dir) unless cache_dir.absolute?
+logger.info("Cache directory: #{cache_dir}")
+FileUtils.mkdir_p(cache_dir)
+
+cache = ActiveSupport::Cache::FileStore.new(cache_dir)
+
 octokit_client = Octokit::Client.new(octokit_config)
 octokit_client.middleware = Faraday::RackBuilder.new do |builder|
-  builder.use Faraday::HttpCache, shared_cache: false, logger: logger, serializer: Marshal
+  builder.use Faraday::HttpCache, shared_cache: false, store: cache, logger: logger, serializer: Marshal
   builder.use Octokit::Response::RaiseError
   builder.adapter Faraday.default_adapter
 end
