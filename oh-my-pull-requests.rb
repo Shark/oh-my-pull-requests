@@ -5,6 +5,7 @@ require 'rubygems'
 require 'bundler/setup'
 
 require 'octokit'
+require 'faraday-http-cache'
 require 'pry' if %w(development test).include?(ENV['RUBY_ENV'])
 
 require_relative 'lib/utils'
@@ -27,6 +28,11 @@ if api_endpoint = config['github']['api_endpoint']
 end
 
 octokit_client = Octokit::Client.new(octokit_config)
+octokit_client.middleware = Faraday::RackBuilder.new do |builder|
+  builder.use Faraday::HttpCache, shared_cache: false, logger: logger, serializer: Marshal
+  builder.use Octokit::Response::RaiseError
+  builder.adapter Faraday.default_adapter
+end
 if config['github']['ssl_verify'] == false
   logger.warning('Disabling SSL Certificate Verification')
   octokit_client.connection_options[:ssl] = { verify: false }
