@@ -50,7 +50,8 @@ end
 user = octokit_client.user
 logger.info "Logged in as #{user.login}"
 
-repository = PullRequestRepository.new(octokit_client, config['github']['repositories_without_ci'] || [])
+repositories_without_ci = config['github']['repositories_without_ci'] || []
+repository = PullRequestRepository.new(octokit_client)
 last_update_repository = nil
 old_color = nil
 Blink1Adapter.fade_to_color(:off, config['blink1']['luminosity'])
@@ -71,10 +72,8 @@ loop do
   end
 
   repository.update_pull_requests!
-  repository.update_states!
-  repository.pull_requests.each(&:forget_changed!)
 
-  color = ColorReducer.color(repository)
+  color = ColorReducer.color(repository, repositories_without_ci)
   if color != old_color
     logger.info("Setting color #{color}")
     Blink1Adapter.fade_to_color(color, config['blink1']['luminosity'])
