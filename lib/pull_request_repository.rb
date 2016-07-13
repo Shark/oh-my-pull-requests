@@ -1,5 +1,4 @@
 require_relative 'pull_request'
-require_relative 'event_scraper'
 require_relative 'utils'
 
 class PullRequestRepository
@@ -8,27 +7,24 @@ class PullRequestRepository
   def initialize(octokit_client, repositories_without_ci)
     @octokit_client = octokit_client
     @pull_requests = []
-    @event_scraper = EventScraper.new(octokit_client)
     @repositories_without_ci = repositories_without_ci
   end
 
   def update_repository!
     logger.debug('update_repository!')
 
-    pull_requests = event_scraper
-                    .run
-                    .select {|e| e.type == 'PullRequestEvent' && e.actor.login == user.login }
-                    .map{|e| e.payload.pull_request }
-                    .select{|pr| pr.state == 'open' }
-                    .compact
-                    .each do |pr|
-                      without_ci = repositories_without_ci.include?("#{pr.head.repo.owner.login}/#{pr.head.repo.name}")
-                      add_pull_request(owner: pr.head.repo.owner.login,
-                                       repository: pr.head.repo.name,
-                                       id: pr.number,
-                                       head_sha: pr.head.sha,
-                                       without_ci: without_ci)
-                    end
+    octokit_client.
+    search_issues("is:open is:pr involves:#{user.login}").
+    items.
+    map {|result| result.pull_request.rels[:self].get.data }.
+    each do |pr|
+      without_ci = repositories_without_ci.include?("#{pr.head.repo.owner.login}/#{pr.head.repo.name}")
+      add_pull_request(owner: pr.head.repo.owner.login,
+                       repository: pr.head.repo.name,
+                       id: pr.number,
+                       head_sha: pr.head.sha,
+                       without_ci: without_ci)
+    end
 
     true
   end
@@ -60,6 +56,10 @@ class PullRequestRepository
   end
 
   private
+
+  def user
+    @user ||= octokit_client.user
+  end
 
   def prune!(canonical_names_to_keep)
     @pull_requests = pull_requests
@@ -93,5 +93,5 @@ class PullRequestRepository
     @user ||= octokit_client.user
   end
 
-  attr_reader :octokit_client, :event_scraper
+  attr_reader :octokit_client
 end
