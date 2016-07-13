@@ -8,6 +8,7 @@ require 'bundler/setup'
 require 'octokit'
 require 'faraday-http-cache'
 require 'active_support/cache'
+require 'active_support/notifications'
 require 'pry' if %w(development test).include?(ENV['RUBY_ENV'])
 
 require_relative 'lib/utils'
