@@ -9,8 +9,8 @@ class GithubApi
     items.
     map {|result| result.pull_request.rels[:self].get.data }.
     map do |pr|
-      PullRequest.new(owner: pr.head.repo.owner.login,
-                      repository: pr.head.repo.name,
+      PullRequest.new(owner: pr.base.repo.owner.login,
+                      repository: pr.base.repo.name,
                       id: pr.number,
                       head_sha: pr.head.sha)
     end

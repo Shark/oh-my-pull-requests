@@ -4,9 +4,13 @@ github:
   update_repository_interval: 60
   cache_dir: cache/
   # optional
-  api_endpoint: http://my.git.hub/api/v3
-  ssl_verify: false
+  # api_endpoint: http://my.git.hub/api/v3
+  # ssl_verify: false
   repositories_without_ci:
     - user/some_repo
-blink1:
-  luminosity: 0.6
+adapters:
+  blink1:
+    enabled: false
+    luminosity: 0.6
+  any_bar:
+    enabled: true

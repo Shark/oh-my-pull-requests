@@ -14,7 +14,8 @@ require 'pry' if %w(development test).include?(ENV['RUBY_ENV'])
 require_relative 'lib/utils'
 require_relative 'lib/pull_request_repository'
 require_relative 'lib/color_reducer'
-require_relative 'lib/blink1_adapter'
+require_relative 'lib/adapter/blink1'
+require_relative 'lib/adapter/any_bar'
 
 $stdout.sync = true
 
@@ -54,10 +55,25 @@ repositories_without_ci = config['github']['repositories_without_ci'] || []
 repository = PullRequestRepository.new(octokit_client)
 last_update_repository = nil
 old_color = nil
-Blink1Adapter.fade_to_color(:off, config['blink1']['luminosity'])
+
+adapters = [].tap do |adapters|
+  if adapter_configs = config['adapters']
+    adapter_configs.each do |name, adapter_config|
+      next unless adapter_config.delete('enabled') { false }
+
+      klass = case name
+              when 'blink1' then Adapter::Blink1
+              when 'any_bar' then Adapter::AnyBar
+              end
+      adapters << klass.new(adapter_config)
+    end
+  end
+end
+
+adapters.each {|a| a.fade_to_color(:off) }
 
 trap('INT') do
-  Blink1Adapter.fade_to_color(:off, config['blink1']['luminosity'])
+  adapters.each {|a| a.fade_to_color(:off) }
   exit
 end
 
@@ -76,7 +92,7 @@ loop do
   color = ColorReducer.color(repository, repositories_without_ci)
   if color != old_color
     logger.info("Setting color #{color}")
-    Blink1Adapter.fade_to_color(color, config['blink1']['luminosity'])
+    adapters.each {|a| a.fade_to_color(color) }
     old_color = color
   end
 
